@@ -11,8 +11,14 @@
     "build": "webpack -p --mode production"
   },
   "dependencies": {
+    "@vuikit/icons": "^0.8.1",
+    "@vuikit/theme": "^0.8.1",
     "vue": "^2.6.11",
-    "vue-router": "^3.4.3"
+    "vue-code-highlight": "^0.7.6",
+    "vue-router": "^3.4.3",
+    "vuedraggable": "^2.24.3",
+    "vuex": "^3.5.1",
+    "vuikit": "^0.8.10"
   },
   "devDependencies": {
     "@babel/core": "^7.11.1",

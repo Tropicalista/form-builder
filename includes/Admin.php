@@ -21,10 +21,11 @@ class Admin {
         $capability = 'manage_options';
         $slug       = 'vue-app';
 
-        $hook = add_menu_page( __( 'Vue App', 'textdomain' ), __( 'Vue App', 'textdomain' ), $capability, $slug, [ $this, 'plugin_page' ], 'dashicons-text' );
+        $hook = add_menu_page( __( 'Forms', 'textdomain' ), __( 'Forms', 'textdomain' ), $capability, $slug, [ $this, 'plugin_page' ], 'dashicons-text' );
 
         if ( current_user_can( $capability ) ) {
             $submenu[ $slug ][] = array( __( 'App', 'textdomain' ), $capability, 'admin.php?page=' . $slug . '#/' );
+            $submenu[ $slug ][] = array( __( 'Forms', 'textdomain' ), $capability, 'admin.php?page=' . $slug . '#/forms' );
             $submenu[ $slug ][] = array( __( 'Settings', 'textdomain' ), $capability, 'admin.php?page=' . $slug . '#/settings' );
         }
 
@@ -47,6 +48,7 @@ class Admin {
      */
     public function enqueue_scripts() {
         wp_enqueue_style( 'baseplugin-admin' );
+        wp_enqueue_style( 'baseplugin-vendors' );
         wp_enqueue_script( 'baseplugin-admin' );
     }
 
@@ -56,6 +58,6 @@ class Admin {
      * @return void
      */
     public function plugin_page() {
-        echo '<div class="wrap"><div id="vue-admin-app"></div></div>';
+        echo '<div class="wrap"><div id="formello-app"></div></div>';
     }
 }
