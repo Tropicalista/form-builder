@@ -40,6 +40,10 @@ class Assets {
 
             wp_register_script( $handle, $script['src'], $deps, $version, $in_footer );
         }
+        wp_localize_script( 'baseplugin-admin', 'formello_var', array(
+            'nonce' => wp_create_nonce('wp_rest'),
+            'baseurl' => get_rest_url() . 'formello/v1/'
+        ));
     }
 
     /**
@@ -84,7 +88,7 @@ class Assets {
             ],
             'baseplugin-admin' => [
                 'src'       => BASEPLUGIN_ASSETS . '/js/admin.js',
-                'deps'      => [ 'jquery', 'baseplugin-vendor', 'baseplugin-runtime' ],
+                'deps'      => [ 'jquery', 'wp-api', 'baseplugin-vendor', 'baseplugin-runtime' ],
                 'version'   => filemtime( BASEPLUGIN_PATH . '/assets/js/admin.js' ),
                 'in_footer' => true
             ]

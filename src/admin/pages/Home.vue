@@ -1,71 +1,40 @@
 <template>
-  <div class="home">
-    <h1 @click="showPanel = !showPanel">{{ msg }} {{showPanel}}</h1>
-    <h2 @click.prevent="onPrint()">GET HTML</h2>
 
-    <sliding-panel v-show="showPanel" @close="showPanel = false">
-      <div slot="content">
-        <panel />
-      </div>
-    </sliding-panel>
-      
-    <div class="toolbar">
 
-      <draggable
-        class="dragArea list-group"
-        :list="inputs"
-        :sort="false"
-        :group="{ name: 'people', pull: 'clone', put: false }"
-        :clone="cloneDog"
-      >
-        <div
-          class="list-group-item input-item"
-          v-for="(element, index) in inputs"
-          :key="index"
+  <vk-grid class="uk-child-width-expand@s">
+
+    <div>
+      <vk-card>
+
+        <vk-button @click.prevent="goToNew()" type="primary">Create</vk-button>
+        
+        <vuetable ref="vuetable"
+          :api-mode="false"
+          :data="localData"
+          :fields="[ 'post_title', 'ID', 'actions' ]"
+          :css="css.table"
+          pagination-path=""
         >
-          {{ element.label }}
-        </div>
-      </draggable>    	
+          <div slot="id" slot-scope="props">
+            <input type="text" name="" :value="'[formello id=' + props.rowData.ID + ']'" readonly>
+          </div>
+          <div slot="post_title" slot-scope="props">
+            <a :href="'#/edit/' + props.rowData.ID">{{props.rowData.post_title}}</a>
+          </div>
+          <div slot="actions" slot-scope="props"> 
+            <vk-icon-button :href="'#/edit/' + props.rowData.ID" icon="cog"></vk-icon-button>
+            <vk-icon-button @click.prevent="deleteRow(props.rowData.ID)" icon="trash"></vk-icon-button>
+          </div>
+        </vuetable>
+      </vk-card>
     </div>
-    <div class="forms">
-      <draggable
-        class="dragArea list-group"
-        :list="form"
-        group="people"
-        @update="onUpdate"
-         id="result"
-      >
 
-        <div
-          class="list-group-item formello"
-          v-for="( elm, index ) in form"
-          :key="elm.id"
-          ref="formello"
-        >
-          <base-input :field="elm" />
+  </vk-grid>
 
-          <span id="tools">
-            <button @click="togglePanel(elm)" class="button button-primary"><span class="dashicons dashicons-admin-tools"></span></button>
-            <button @click="deleteElm(index)" class="button button-primary"><span class="dashicons dashicons-trash"></span></button>
-          </span>
-        </div>
-
-      </draggable>    	
-    </div>
-    <div>{{form}} <h1>{{idGlobal}}</h1></div>
-    <raw-html :content="rawHtml" v-show="rawHtml" />
-  </div>
 </template>
 
 <script>
-import { EventBus } from 'admin/utils/eventBus.js';
-import fieldDefs from 'admin/utils/fieldsDefinitions.js';
-import Settings from "admin/pages/Settings.vue";
-import SlidingPanel from "admin/components/SlidingPanel.vue";
-import Panel from "admin/components/options/Panel.vue";
-import BaseInput from "admin/components/inputs/BaseInput.vue";
-import RawHtml from "admin/components/RawHtml.vue";
-import draggable from "vuedraggable";
+import Vuetable from 'vuetable-2'
 
 export default {
 
@@ -73,61 +42,48 @@ export default {
 
   data () {
     return {
-      showPanel: false,
-  	  msg: 'Welcome to Your Vue.js Admin App',
-  	  inputs: fieldDefs,
-  	  form: [],
-      drag: false,
-      rawHtml: ''
+      localData: [],
+      css: {
+        table: {
+          tableWrapper: 'uk-overflow-auto',
+          tableHeaderClass: 'fixed',
+          tableBodyClass: '',
+          tableClass: 'uk-table uk-table-divider uk-table-hover',
+          loadingClass: 'loading',
+          ascendingIcon: 'blue chevron up icon',
+          descendingIcon: 'blue chevron down icon',
+          ascendingClass: 'sorted-asc',
+          descendingClass: 'sorted-desc',
+          sortableIcon: 'grey sort icon',
+          handleIcon: 'grey sidebar icon',
+        },
+      }
     }
   },
   methods: {
-    cloneDog(field) {
-      return {...field, id: this.idGlobal+1};
+    goToNew() {
+      this.$router.push('new')
     },
-    deleteElm(field) {
-      this.form.splice(field, 1);
-      this.showPanel = false
-    },
-    onUpdate(){
-      //here you have access to the update list via this.list...
-      //console.log('updated', this.form[0]);
-    },
-		onPrint() {
-		    //console.log(this.$refs.formello.$el)
-        //console.log(document.getElementById('result'))
-        this.$nextTick( () => {
-          let html = ''
-          this.$refs.formello.forEach( (element, index) => {
-            html += element.firstChild.outerHTML
-          })
-          //this.rawHtml = html.toString()
-          this.rawHtml = document.getElementById('result').outerHTML
-        } )
+    deleteRow(id) {
+      axios.delete( 'form' + '/' + id )
+        .then( response => {
+          this.localData = [
+            ...this.localData.filter((item) => item.ID !== id)
+          ]          
+        })
 
-		},
-    togglePanel(input) {
-      EventBus.$emit('togglePanel', input)
-      this.showPanel = true
+
     }
   },
   created() {
-    EventBus.$on('saveField', (data) => {
-      this.showPanel = false
-    })
-  },
-  computed: {
-    idGlobal() {
-      return this.form.length
-    }
+    axios.get( 'form' )
+      .then( response => {
+        this.localData = response.data
+      })
+
   },
   components: {
-  	Settings,
-  	BaseInput,
-    SlidingPanel,
-    Panel,
-    draggable,
-    RawHtml
+  	Vuetable,
   }  
 }
 </script>

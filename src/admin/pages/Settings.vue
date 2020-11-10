@@ -45,18 +45,3 @@ export default {
   }
 }
 </script>
-
-<style>
-.close-button {
-	left: 40px;
-}
-.uk-tab > li {
-	margin-bottom: 0;
-}
-.formello .uk-offcanvas-bar {
-    width: 50% !important;
-    padding: 40px 40px;
-    top: 30px;
-}
-
-</style>
