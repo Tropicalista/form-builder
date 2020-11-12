@@ -36,11 +36,45 @@ axios.defaults.headers.common = {
 axios.defaults.baseURL = formello_var.baseurl
 
 /* eslint-disable no-new */
-new Vue({
+const app = new Vue({
   el: '#formello-app',
   store,
   router,
   render: h => h(App),
+  mounted() {
+    this.enableInterceptor()
+    axios.get( 'actions' )
+      .then( response => {
+        store.commit( 'setActions', response.data )
+      })
+  },
+  data: {
+      isLoading: false,
+      axiosInterceptor: null,
+  },
+  methods: {
+      enableInterceptor() {
+          this.axiosInterceptor = window.axios.interceptors.request.use((config) => {
+              this.isLoading = true
+              return config
+          }, (error) => {
+              this.isLoading = false  
+              return Promise.reject(error)
+          })
+          
+          window.axios.interceptors.response.use((response) => {
+              this.isLoading = false    
+              return response
+          }, function(error) {
+              this.isLoading = false
+              return Promise.reject(error)
+          })
+      },
+      
+      disableInterceptor() {
+          window.axios.interceptors.request.eject(this.axiosInterceptor)
+      },     
+  },
   components:{
     VkLabel: Label,
     VkGrid: Grid,
@@ -53,8 +87,7 @@ new Vue({
     VkTabs: Tabs,
     VkTabsItem: TabsItem,
   }
-});
-
+})
 
 // fix the admin menu for the slug "vue-app"
 menuFix('formello');

@@ -35,6 +35,7 @@ class Api extends WP_REST_Controller {
      */
     public function register_routes() {
         (new Api\Form())->register_routes();
+        (new Api\Actions())->register_routes();
     }
 
 }

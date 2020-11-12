@@ -5,8 +5,11 @@
 </template>
 
 <script>
-import { EventBus } from 'admin/utils/eventBus.js';
+import Loader from 'admin/components/ui/Loader.vue'
 export default {
-  name: 'App'
+  name: 'App',
+  components: {
+  	Loader
+  }
 }
 </script>

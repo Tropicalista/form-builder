@@ -9,7 +9,6 @@ class Admin {
     public function __construct() {
         $this->register();
         add_action( 'admin_menu', [ $this, 'admin_menu' ] );
-        add_action( 'parse_request', array( $this, 'listen_for_preview' ) );
     }
 
     /**

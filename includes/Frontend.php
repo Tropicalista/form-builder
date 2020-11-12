@@ -396,7 +396,7 @@ class Frontend {
                 return $content;
             }
 
-            return sprintf( '<p><strong>%s</strong> %s</p>', __( 'Error:', 'html-forms' ), sprintf( __( 'No form found with slug %s', 'html-forms' ), $attributes['slug'] ) );
+            return sprintf( '<p><strong>%s</strong> %s</p>', __( 'Error:', 'formello' ), sprintf( __( 'No form found with slug %s', 'formello' ), $attributes['slug'] ) );
         }
 
         return $form . $content;

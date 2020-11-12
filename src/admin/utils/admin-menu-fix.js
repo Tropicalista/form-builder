@@ -7,6 +7,8 @@
 function menuFix(slug) {
     var $ = jQuery;
 
+    $('body').removeClass('wp-core-ui wp-admin');
+
     let menuRoot = $('#toplevel_page_' + slug);
     let currentUrl = window.location.href;
     let currentPath = currentUrl.substr( currentUrl.indexOf('admin.php') );
