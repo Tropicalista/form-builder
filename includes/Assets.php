@@ -44,6 +44,14 @@ class Assets {
             'nonce' => wp_create_nonce('wp_rest'),
             'baseurl' => get_rest_url() . 'formello/v1/'
         ));
+
+        wp_localize_script(
+            'baseplugin-frontend',
+            'hf_js_vars',
+            array(
+                'ajax_url' => admin_url( 'admin-ajax.php' ),
+            )
+        );
     }
 
     /**
@@ -82,7 +90,7 @@ class Assets {
             ],
             'baseplugin-frontend' => [
                 'src'       => BASEPLUGIN_ASSETS . '/js/frontend.js',
-                'deps'      => [ 'jquery', 'baseplugin-vendor', 'baseplugin-runtime' ],
+                'deps'      => [ 'baseplugin-vendor', 'baseplugin-runtime' ],
                 'version'   => filemtime( BASEPLUGIN_PATH . '/assets/js/frontend.js' ),
                 'in_footer' => true
             ],

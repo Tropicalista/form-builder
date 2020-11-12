@@ -7,8 +7,10 @@ namespace App;
 class Admin {
 
     public function __construct() {
-        $this->register();
+        //$this->register();
         add_action( 'admin_menu', [ $this, 'admin_menu' ] );
+        add_action( 'init', array( $this, 'listen_for_submit' ) );
+
     }
 
     /**
@@ -62,33 +64,9 @@ class Admin {
         echo '<div class="wrap"><div id="formello-app"></div></div>';
     }
 
-    public function register() {
-
-        // register post type
-        /*register_post_type(
-            'formello-form',
-            array(
-                'labels'          => array(
-                    'name'          => 'Formello Forms',
-                    'singular_name' => 'Formello Form',
-                ),
-                'public'            => true,
-                'rest_base'         => 'formello',
-                'show_in_rest'      => true,
-                'rest_controller_class' => 'WP_REST_Posts_Controller',
-            )
-        );*/
-
-        /*if ( function_exists( 'register_block_type' ) ) {
-            register_block_type(
-                'formello-forms/form',
-                array(
-                    'render_callback' => array( $this, 'shortcode' ),
-                )
-            );
-        }*/
-
-        //add_shortcode( 'formello_form', array( $this, 'shortcode' ) );
+    public function listen_for_submit() {
+        var_dump("formello respond from ADMIN");
+        wp_die();
     }
 
 }

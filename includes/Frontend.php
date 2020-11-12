@@ -7,59 +7,9 @@ namespace App;
 class Frontend {
 
     public function __construct() {
+        add_action( 'init', array( $this, 'listen_for_submit' ) );
         add_shortcode( 'formello', [ $this, 'shortcode' ] );
         add_action( 'parse_request', array( $this, 'listen_for_preview' ) );
-    }
-
-    /**
-     * Render frontend app
-     *
-     * @param  array $atts
-     * @param  string $content
-     *
-     * @return string
-    public function render_frontend( $atts, $content = '' ) {
-        wp_enqueue_style( 'baseplugin-frontend' );
-        wp_enqueue_script( 'baseplugin-frontend' );
-
-        $content .= '<div id="vue-frontend-app"></div>';
-
-        return $content;
-    }
-     */
-
-    public function listen_for_previewtest() {
-
-        if ( empty( $_GET['formello_preview_form'] ) || ! current_user_can( 'manage_options' ) ) {
-            return;
-        }
-
-        try {
-            $form = get_post( $_GET['formello_preview_form'] );
-
-            if ( ! $form instanceof \WP_Post || $form->post_type !== 'formello-form' ) {
-                throw new \Exception( 'Invalid form ID' );
-            }            
-        } catch ( \Exception $e ) {
-            return;
-        }
-
-        show_admin_bar( false );
-        add_filter( 'pre_handle_404', '__return_true' );
-        remove_all_actions( 'template_redirect' );
-        add_action(
-            'template_redirect',
-            function() use ( $form ) {
-                // clear output, some plugin or hooked code might have thrown errors by now.
-                if ( ob_get_level() > 0 ) {
-                    ob_end_clean();
-                }
-
-                status_header( 200 );
-                require BASEPLUGIN_PATH . '/views/form-preview.php';
-                exit;
-            }
-        );
     }
 
     /**
@@ -69,20 +19,20 @@ class Frontend {
      */
     public function validate_form( Form $form, array $data ) {
         // validate honeypot field
-        $honeypot_key = sprintf( '_hf_h%d', $form->ID );
+        $honeypot_key = sprintf( '_formello_h%d', $form->ID );
         if ( ! isset( $data[ $honeypot_key ] ) || $data[ $honeypot_key ] !== '' ) {
             return 'spam';
         }
 
         // validate size of POST array
-        if ( count( $data ) > $form->get_field_count() && apply_filters( 'hf_validate_form_request_size', true ) ) {
+        if ( count( $data ) > $form->get_field_count() && apply_filters( 'formello_validate_form_request_size', true ) ) {
             return 'spam';
         }
 
-        $was_required    = (array) hf_array_get( $data, '_was_required', array() );
+        $was_required    = (array) formello_array_get( $data, '_was_required', array() );
         $required_fields = $form->get_required_fields();
         foreach ( $required_fields as $field_name ) {
-            $value = hf_array_get( $data, $field_name );
+            $value = formello_array_get( $data, $field_name );
             if ( empty( $value ) && ! in_array( $field_name, $was_required ) ) {
                 return 'required_field_missing';
             }
@@ -90,7 +40,7 @@ class Frontend {
 
         $email_fields = $form->get_email_fields();
         foreach ( $email_fields as $field_name ) {
-            $value = hf_array_get( $data, $field_name );
+            $value = formello_array_get( $data, $field_name );
             if ( ! empty( $value ) && ! is_email( $value ) ) {
                 return 'invalid_email';
             }
@@ -108,7 +58,7 @@ class Frontend {
          * @param Form $form
          * @param array $data
          */
-        $error_code = apply_filters( 'hf_validate_form_' . $form->slug, $error_code, $form, $data );
+        $error_code = apply_filters( 'formello_validate_form_' . $form->slug, $error_code, $form, $data );
 
         /**
          * This filter allows you to perform your own form validation.
@@ -120,7 +70,7 @@ class Frontend {
          * @param Form $form
          * @param array $data
          */
-        $error_code = apply_filters( 'hf_validate_form', $error_code, $form, $data );
+        $error_code = apply_filters( 'formello_validate_form', $error_code, $form, $data );
         if ( ! empty( $error_code ) ) {
             return $error_code;
         }
@@ -194,19 +144,19 @@ class Frontend {
     }
 
     public function listen_for_submit() {
-
-        // only respond to AJAX requests with _hf_form_id set.
-        if ( empty( $_POST['_hf_form_id'] )
+var_dump("formello respond");
+exit;
+        // only respond to AJAX requests with _formello_form_id set.
+        if ( empty( $_POST['_formello_form_id'] )
             || empty( $_SERVER['HTTP_X_REQUESTED_WITH'] )
             || strtolower( $_SERVER['HTTP_X_REQUESTED_WITH'] ) !== strtolower( 'XMLHttpRequest' ) ) {
             return;
         }
 
         $data       = $this->get_request_data();
-        $form_id    = (int) $data['_hf_form_id'];
-        $form       = hf_get_form( $form_id );
+        $form_id    = (int) $data['_formello_form_id'];
+        $form       = formello_get_form( $form_id );
         $error_code = $this->validate_form( $form, $data );
-        
         if ( empty( $error_code ) ) {
 
             /**
@@ -215,7 +165,7 @@ class Frontend {
             *
             * @param array $names
             */
-            $ignored_field_names = apply_filters( 'hf_ignored_field_names', array() );
+            $ignored_field_names = apply_filters( 'formello_ignored_field_names', array() );
 
             // filter out ignored field names
             foreach ( $data as $key => $value ) {
@@ -252,9 +202,9 @@ class Frontend {
             /**
             * General purpose hook that runs before all form actions, so we can still modify the submission object that is passed to actions.
             */
-            do_action( 'hf_process_form', $form, $submission );
+            do_action( 'formello_process_form', $form, $submission );
 
-            // re-save submission object for convenience in form processors hooked into hf_process_form
+            // re-save submission object for convenience in form processors hooked into formello_process_form
             if ( $form->settings['save_submissions'] ) {
                  $submission->save();
             }
@@ -269,7 +219,7 @@ class Frontend {
                      * @param Submission $submission
                      * @param Form $form
                      */
-                    do_action( 'hf_process_form_action_' . $action_settings['type'], $action_settings, $submission, $form );
+                    do_action( 'formello_process_form_action_' . $action_settings['type'], $action_settings, $submission, $form );
                 }
             }
 
@@ -279,7 +229,7 @@ class Frontend {
              * @param Submission $submission
              * @param Form $form
              */
-            do_action( "hf_form_{$form->slug}_success", $submission, $form );
+            do_action( "formello_form_{$form->slug}_success", $submission, $form );
 
             /**
              * General purpose hook after all form actions have been processed.
@@ -287,7 +237,7 @@ class Frontend {
              * @param Submission $submission
              * @param Form $form
              */
-            do_action( 'hf_form_success', $submission, $form );
+            do_action( 'formello_form_success', $submission, $form );
         } else {
             /**
              * General purpose hook for when a form error occurred
@@ -296,7 +246,7 @@ class Frontend {
              * @param Form $form
              * @param array $data
              */
-            do_action( 'hf_form_error', $error_code, $form, $data );
+            do_action( 'formello_form_error', $error_code, $form, $data );
         }
 
         // Delay response until "wp_loaded" hook to give other plugins a chance to process stuff.
@@ -315,7 +265,7 @@ class Frontend {
                 nocache_headers();
 
                 wp_send_json( $response, 200 );
-                exit;
+                wp_die();
             }
         );
     }
@@ -344,7 +294,7 @@ class Frontend {
 
                 status_header( 200 );
                 require BASEPLUGIN_PATH . '/views/form-preview.php';
-                exit;
+                wp_die();
             }
         );
     }
@@ -364,7 +314,7 @@ class Frontend {
                 $response['redirect_url'] = formello_replace_data_variables( $form->settings['redirect_url'], $data, 'urlencode' );
             }
 
-            return apply_filters( 'hf_form_response', $response, $form, $data );
+            return apply_filters( 'formello_form_response', $response, $form, $data );
         }
 
         // get error message
@@ -384,6 +334,8 @@ class Frontend {
     }
 
     public function shortcode( $attributes = array(), $content = '' ) {
+        wp_enqueue_script( 'baseplugin-frontend' );
+
         if ( empty( $attributes['slug'] ) && empty( $attributes['id'] ) ) {
             return '';
         }

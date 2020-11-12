@@ -13,7 +13,6 @@ class Api extends WP_REST_Controller {
      */
     public function __construct() {
         $this->includes();
-
         add_action( 'rest_api_init', [ $this, 'register_routes' ] );
     }
 
