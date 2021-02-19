@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@babel/polyfill": "^7.12.1",
-    "axios": "^0.21.0",
+    "axios": "^0.21.1",
     "flatpickr": "^4.6.6",
     "formbouncerjs": "^1.4.6",
     "populate.js": "^1.2.2",
