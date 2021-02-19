@@ -7,10 +7,7 @@ namespace App;
 class Admin {
 
     public function __construct() {
-        //$this->register();
         add_action( 'admin_menu', [ $this, 'admin_menu' ] );
-        add_action( 'init', array( $this, 'listen_for_submit' ) );
-
     }
 
     /**
@@ -24,12 +21,14 @@ class Admin {
         $capability = 'manage_options';
         $slug       = 'formello';
 
-        $hook = add_menu_page( __( 'Forms', 'textdomain' ), __( 'Forms', 'textdomain' ), $capability, $slug, [ $this, 'plugin_page' ], 'dashicons-text' );
+        $hook = add_menu_page( __( 'Formello', 'formello' ), __( 'Formello', 'formello' ), $capability, $slug, [ $this, 'plugin_page' ], 'dashicons-text' );
 
         if ( current_user_can( $capability ) ) {
-            $submenu[ $slug ][] = array( __( 'All Forms', 'textdomain' ), $capability, 'admin.php?page=' . $slug . '#/' );
-            $submenu[ $slug ][] = array( __( 'New Form', 'textdomain' ), $capability, 'admin.php?page=' . $slug . '#/new' );
-            $submenu[ $slug ][] = array( __( 'Settings', 'textdomain' ), $capability, 'admin.php?page=' . $slug . '#/settings' );
+            $submenu[ $slug ][] = array( __( 'All Forms', 'formello' ), $capability, 'admin.php?page=' . $slug . '#/' );
+            $submenu[ $slug ][] = array( __( 'New Form', 'formello' ), $capability, 'admin.php?page=' . $slug . '#/new' );
+            $submenu[ $slug ][] = array( __( 'Submissions', 'formello' ), $capability, 'admin.php?page=' . $slug . '#/submissions' );
+            $submenu[ $slug ][] = array( __( 'Integrations', 'formello' ), $capability, 'admin.php?page=' . $slug . '#/integrations' );
+            $submenu[ $slug ][] = array( __( 'Settings', 'formello' ), $capability, 'admin.php?page=' . $slug . '#/settings' );
         }
 
         add_action( 'load-' . $hook, [ $this, 'init_hooks'] );
@@ -50,9 +49,11 @@ class Admin {
      * @return void
      */
     public function enqueue_scripts() {
-        wp_enqueue_style( 'baseplugin-admin' );
-        wp_enqueue_style( 'baseplugin-vendors' );
-        wp_enqueue_script( 'baseplugin-admin' );
+        wp_dequeue_style( 'forms-css' );
+        wp_enqueue_style( 'formello-icons' );
+        wp_enqueue_style( 'formello-vendors' );
+        wp_enqueue_style( 'formello-admin' );
+        wp_enqueue_script( 'formello-admin' );
     }
 
     /**
@@ -62,11 +63,6 @@ class Admin {
      */
     public function plugin_page() {
         echo '<div class="wrap"><div id="formello-app"></div></div>';
-    }
-
-    public function listen_for_submit() {
-        var_dump("formello respond from ADMIN");
-        wp_die();
     }
 
 }

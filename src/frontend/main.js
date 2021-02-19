@@ -1,34 +1,60 @@
+//const Bouncer = require('formbouncerjs')
+import prefiller from './form-prefiller.js'
 import conditionality from './conditionality.js'
 import './polyfills/custom-event.js'
 import events from './events.js'
 const Loader = require('./form-loading-indicator.js')
+import Bouncer from 'formbouncerjs'
 
-const vars = window.hf_js_vars || { ajax_url: window.location.href }
+const vars = window.formello_vars || { ajax_url: window.location.href }
+
+var loader;
 
 function cleanFormMessages (formEl) {
-  const messageElements = formEl.querySelectorAll('.hf-message');
+  const messageElements = formEl.querySelectorAll('.formello-message');
   [].forEach.call(messageElements, (el) => {
     el.parentNode.removeChild(el)
   })
 }
 
-function addFormMessage (formEl, message) {
+function addFormMessage (formEl, obj) {
+  var type = obj.message.type
+  var text = obj.message.text
+
   const txtElement = document.createElement('p')
-  txtElement.className = 'hf-message hf-message-' + message.type
-  txtElement.innerHTML = message.text // uses innerHTML because we allow some HTML strings in the message settings
+  txtElement.className = 'formello-message formello-message-' + type
+  txtElement.innerHTML = text // uses innerHTML because we allow some HTML strings in the message settings
   txtElement.role = 'alert'
 
-  const wrapperElement = formEl.querySelector('.hf-messages') || formEl
+  if( obj.error ){
+    const list = document.createElement('ul')
+    for (var key in obj.error ) {
+        // Create the list item:
+        var item = document.createElement('li');
+
+        // Set its contents:
+        item.appendChild( document.createTextNode( key + ': ' + obj.error[key] ) );
+
+        // Add it to the list:
+        list.appendChild(item);
+    }
+
+    txtElement.appendChild(list)
+  }
+
+
+  const wrapperElement = formEl.querySelector('.formello-messages') || formEl
   wrapperElement.appendChild(txtElement)
 }
 
 function handleSubmitEvents (e) {
   const formEl = e.target
-  if (formEl.className.indexOf('hf-form') < 0) {
+  if (formEl.className.indexOf('formello-form') < 0) {
+    loader.stop()
     return
   }
 
-  // always prevent default (because regular submit doesn't work for HTML Forms)
+  // always prevent default (because regular submit doesn't work for Formello Forms)
   e.preventDefault()
   submitForm(formEl)
 }
@@ -38,9 +64,6 @@ function submitForm (formEl) {
   emitEvent('submit', formEl)
 
   const formData = new FormData(formEl);
-  [].forEach.call(formEl.querySelectorAll('[data-was-required=true]'), function (el) {
-    formData.append('_was_required[]', el.getAttribute('name'))
-  })
 
   let request = new XMLHttpRequest()
   request.onreadystatechange = createRequestHandler(formEl)
@@ -51,16 +74,14 @@ function submitForm (formEl) {
 }
 
 function emitEvent (eventName, element) {
-  // browser event API: formElement.on('hf-success', ..)
-  element.dispatchEvent(new CustomEvent('hf-' + eventName))
+  // browser event API: formElement.on('formello-success', ..)
+  element.dispatchEvent(new CustomEvent('formello-' + eventName))
 
-  // custom events API: html_forms.on('success', ..)
+  // custom events API: formello_forms.on('success', ..)
   events.trigger(eventName, [element])
 }
 
 function createRequestHandler (formEl) {
-  const loader = new Loader(formEl)
-  loader.start()
 
   return function () {
     // are we done?
@@ -72,7 +93,7 @@ function createRequestHandler (formEl) {
         try {
           response = JSON.parse(this.responseText)
         } catch (error) {
-          console.log('HTML Forms: failed to parse AJAX response.\n\nError: "' + error + '"')
+          console.log('Formello: failed to parse AJAX response.\n\nError: "' + error + '"')
           return
         }
 
@@ -84,20 +105,21 @@ function createRequestHandler (formEl) {
           emitEvent('success', formEl)
         }
 
+        // Should we redirect?
+        if (response.redirect_url) {
+          window.location = response.redirect_url
+          //return
+        }
+
         // Show form message
         if (response.message) {
-          addFormMessage(formEl, response.message)
+          addFormMessage(formEl, response)
           emitEvent('message', formEl)
         }
 
         // Should we hide form?
         if (response.hide_form) {
-          formEl.querySelector('.hf-fields-wrap').style.display = 'none'
-        }
-
-        // Should we redirect?
-        if (response.redirect_url) {
-          window.location = response.redirect_url
+          formEl.querySelector('.formello-fields-wrap').style.display = 'none'
         }
 
         // clear form
@@ -112,11 +134,63 @@ function createRequestHandler (formEl) {
   }
 }
 
-document.addEventListener('submit', handleSubmitEvents, false) // useCapture=false to ensure we bubble upwards (and thus can cancel propagation)
+function showFiles(e){
+    var input = e.target
+    var list = document.createElement("ul");
+    var output = input.parentNode.insertBefore(list, input.nextSibling)
+
+    var children = "";
+    for (var i = 0; i < input.files.length; ++i) {
+        children += '<li>' + input.files.item(i).name + '</li>';
+    }
+    list.innerHTML = children
+}
+
+var inputFiles = document.querySelectorAll('input[type=file]')
+
+for (var i = 0; i < inputFiles.length; i++) {
+    inputFiles[i].addEventListener('change', showFiles, false);
+}
+
+document.addEventListener('bouncerFormValid', function (e) {
+  e.preventDefault()
+
+  this.spinner = e.target.querySelector('#formello-spinner')
+
+  if(this.spinner){
+    this.spinner.style.display = 'inline'
+  }
+
+  loader = new Loader(e.target)
+  loader.start()
+
+  if( formello_vars.formello_settings.recaptcha_enabled ){
+    grecaptcha.reset();
+    grecaptcha.execute().then(function(){
+      handleSubmitEvents(e)
+    });
+  }else{
+    handleSubmitEvents(e)
+  }
+
+}, false)
+
+var bouncer = new Bouncer('form', {
+  messages: formello_vars.formello_settings.validation.messages,
+  disableSubmit: true
+})
+
 conditionality.init()
 prefiller.init()
 
-window.html_forms = {
+if( formello_vars.formello_settings.has_date ){
+  flatpickr('input[type=date]')
+}
+
+// recaptcha callback
+window.enableBtn = function(e){}
+
+window.formello_forms = {
   on: events.on,
   off: events.off,
   submit: submitForm

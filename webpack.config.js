@@ -76,13 +76,16 @@ module.exports = {
   },
 
   optimization: {
-    runtimeChunk: 'single',
+    //runtimeChunk: 'single', //this create unique runtime
+    /*runtimeChunk: {
+      name: entrypoint => `runtime~${entrypoint.name}`
+    },*/
     splitChunks: {
       cacheGroups: {
         vendor: {
           test: /[\\\/]node_modules[\\\/]/,
           name: 'vendors',
-          chunks: 'all'
+          //chunks: 'all'
         }
       }
     },

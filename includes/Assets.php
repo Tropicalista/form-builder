@@ -36,22 +36,15 @@ class Assets {
         foreach ( $scripts as $handle => $script ) {
             $deps      = isset( $script['deps'] ) ? $script['deps'] : false;
             $in_footer = isset( $script['in_footer'] ) ? $script['in_footer'] : false;
-            $version   = isset( $script['version'] ) ? $script['version'] : BASEPLUGIN_VERSION;
+            $version   = isset( $script['version'] ) ? $script['version'] : FORMELLO_VERSION;
 
             wp_register_script( $handle, $script['src'], $deps, $version, $in_footer );
         }
-        wp_localize_script( 'baseplugin-admin', 'formello_var', array(
-            'nonce' => wp_create_nonce('wp_rest'),
-            'baseurl' => get_rest_url() . 'formello/v1/'
+        wp_localize_script( 'formello-admin', 'formello_var', array(
+            'formello_url'  => FORMELLO_URL,
+            'nonce'         => wp_create_nonce('wp_rest'),
+            'baseurl'       => get_rest_url() . 'formello/v1/'
         ));
-
-        wp_localize_script(
-            'baseplugin-frontend',
-            'hf_js_vars',
-            array(
-                'ajax_url' => admin_url( 'admin-ajax.php' ),
-            )
-        );
     }
 
     /**
@@ -65,7 +58,7 @@ class Assets {
         foreach ( $styles as $handle => $style ) {
             $deps = isset( $style['deps'] ) ? $style['deps'] : false;
 
-            wp_register_style( $handle, $style['src'], $deps, BASEPLUGIN_VERSION );
+            wp_register_style( $handle, $style['src'], $deps, FORMELLO_VERSION );
         }
     }
 
@@ -78,26 +71,34 @@ class Assets {
         $prefix = defined( 'SCRIPT_DEBUG' ) && SCRIPT_DEBUG ? '.min' : '';
 
         $scripts = [
-            'baseplugin-runtime' => [
-                'src'       => BASEPLUGIN_ASSETS . '/js/runtime.js',
-                'version'   => filemtime( BASEPLUGIN_PATH . '/assets/js/runtime.js' ),
+            'flatpickr' => [
+                'src'       => 'https://cdn.jsdelivr.net/npm/flatpickr'
+            ],
+            /*'formello-runtime' => [
+                'src'       => FORMELLO_ASSETS . '/js/runtime~admin.js',
+                'version'   => filemtime( FORMELLO_PATH . '/assets/js/runtime~admin.js' ),
                 'in_footer' => true
             ],
-            'baseplugin-vendor' => [
-                'src'       => BASEPLUGIN_ASSETS . '/js/vendors.js',
-                'version'   => filemtime( BASEPLUGIN_PATH . '/assets/js/vendors.js' ),
+            'formello-runtime-frontend' => [
+                'src'       => FORMELLO_ASSETS . '/js/runtime~frontend.js',
+                'version'   => filemtime( FORMELLO_PATH . '/assets/js/runtime~frontend.js' ),
+                'in_footer' => true
+            ],*/
+            'formello-vendor' => [
+                'src'       => FORMELLO_ASSETS . '/js/vendors.js',
+                'version'   => filemtime( FORMELLO_PATH . '/assets/js/vendors.js' ),
                 'in_footer' => true
             ],
-            'baseplugin-frontend' => [
-                'src'       => BASEPLUGIN_ASSETS . '/js/frontend.js',
-                'deps'      => [ 'baseplugin-vendor', 'baseplugin-runtime' ],
-                'version'   => filemtime( BASEPLUGIN_PATH . '/assets/js/frontend.js' ),
+            'formello-frontend' => [
+                'src'       => FORMELLO_ASSETS . '/js/frontend.js',
+                'deps'      => [],
+                'version'   => filemtime( FORMELLO_PATH . '/assets/js/frontend.js' ),
                 'in_footer' => true
             ],
-            'baseplugin-admin' => [
-                'src'       => BASEPLUGIN_ASSETS . '/js/admin.js',
-                'deps'      => [ 'jquery', 'wp-api', 'baseplugin-vendor', 'baseplugin-runtime' ],
-                'version'   => filemtime( BASEPLUGIN_PATH . '/assets/js/admin.js' ),
+            'formello-admin' => [
+                'src'       => FORMELLO_ASSETS . '/js/admin.js',
+                'deps'      => [ 'wp-i18n', 'wp-api', 'formello-vendor' ],
+                'version'   => filemtime( FORMELLO_PATH . '/assets/js/admin.js' ),
                 'in_footer' => true
             ]
         ];
@@ -113,17 +114,20 @@ class Assets {
     public function get_styles() {
 
         $styles = [
-            'baseplugin-style' => [
-                'src' =>  BASEPLUGIN_ASSETS . '/css/style.css'
+            'formello-style' => [
+                'src' =>  FORMELLO_ASSETS . '/css/style.css'
             ],
-            'baseplugin-frontend' => [
-                'src' =>  BASEPLUGIN_ASSETS . '/css/frontend.css'
+            'formello-frontend' => [
+                'src' =>  FORMELLO_ASSETS . '/css/frontend.css'
             ],
-            'baseplugin-admin' => [
-                'src' =>  BASEPLUGIN_ASSETS . '/css/admin.css'
+            'formello-admin' => [
+                'src' =>  FORMELLO_ASSETS . '/css/admin.css'
             ],
-            'baseplugin-vendors' => [
-                'src' =>  BASEPLUGIN_ASSETS . '/css/vendors.css'
+            'formello-icons' => [
+                'src' =>  '//fonts.googleapis.com/css?family=Roboto:400,500,700,400italic|Material+Icons'
+            ],
+            'formello-vendors' => [
+                'src' =>  FORMELLO_ASSETS . '/css/vendors.css'
             ],
         ];
 

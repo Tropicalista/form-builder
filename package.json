@@ -11,21 +11,21 @@
     "build": "webpack -p --mode production"
   },
   "dependencies": {
-    "@vuikit/icons": "^0.8.1",
-    "@vuikit/theme": "^0.8.1",
+    "@babel/polyfill": "^7.12.1",
     "axios": "^0.21.0",
+    "flatpickr": "^4.6.6",
+    "formbouncerjs": "^1.4.6",
+    "populate.js": "^1.2.2",
     "vue": "^2.6.11",
-    "vue-code-highlight": "^0.7.6",
+    "vue-material": "^1.0.0-beta-15",
     "vue-router": "^3.4.3",
     "vuedraggable": "^2.24.3",
-    "vuetable-2": "^2.0.0-beta.4",
-    "vuex": "^3.5.1",
-    "vuex-map-fields": "^1.4.1",
-    "vuikit": "^0.8.10"
+    "vuex": "^3.5.1"
   },
   "devDependencies": {
-    "@babel/core": "^7.11.1",
-    "@babel/preset-env": "latest",
+    "@babel/cli": "^7.12.1",
+    "@babel/core": "^7.12.3",
+    "@babel/preset-env": "^7.12.1",
     "babel-loader": "^8.1.0",
     "browser-sync": "^2.26.12",
     "browser-sync-webpack-plugin": "^2.2.2",

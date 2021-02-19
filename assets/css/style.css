@@ -1,0 +1,60 @@
+.formello label {
+  clear: both;
+  float: none;
+  display: block;
+  font-weight: bold;
+  margin-bottom: 1px; 
+}
+
+.formello label + label {
+  font-weight: normal; 
+}
+
+.formello input[type="text"],
+.formello input[type="email"],
+.formello input[type="url"],
+.formello input[type="date"],
+.formello input[type="number"],
+.formello select,
+.formello textarea {
+  clear: both;
+  float: none;
+  padding: 4px 8px; }
+
+.formello-message {
+  padding: .75rem 1.25rem;
+  margin-bottom: 1rem;
+  border: 1px solid transparent; }
+
+.formello-message-success {
+  background-color: #dff0d8;
+  border-color: #d0e9c6;
+  color: #3c763d; }
+
+.formello-message-warning {
+  background-color: #fcf8e3;
+  border-color: #faf2cc;
+  color: #8a6d3b; }
+
+.formello-fields-wrap div {
+  margin-bottom: 1em;
+}
+
+.formello-fields-wrap .error, .formello-fields-wrap .error:focus {
+  border-color: red;
+}
+
+.formello-fields-wrap .error-message {
+  color: red;
+  font-style: italic;
+  margin-bottom: 1em;
+}
+
+.spinner-hide {
+  display: none;
+  vertical-align: middle;
+}
+
+.spinner-show {
+  display: inline;
+}

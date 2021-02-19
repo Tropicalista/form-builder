@@ -1,145 +1,92 @@
 <template>
+  <div class="">
+    <md-table v-model="localData" md-card @md-selected="onSelect">
+      <md-table-toolbar>
+        <md-button class="md-raised md-primary" @click="goToNew()">Create new</md-button>
+      </md-table-toolbar>
 
-  <vk-grid class="uk-child-width-expand@s">
+      <md-table-toolbar slot="md-table-alternate-header" slot-scope="{ count }">
+        <div class="md-toolbar-section-end">{{ getAlternateLabel(count) }}</div>
 
-    <div>
-      <vk-card>
+        <div class="md-toolbar-section-start">
+          <md-button class="md-icon-button md-accent" @click="active = true">
+            <md-icon>delete</md-icon>
+          </md-button>
+        </div>
+      </md-table-toolbar>
 
-        <vk-button @click.prevent="goToNew()" type="primary" class="uk-margin">Create</vk-button>
-        <div v-show="$root.isLoading"><vk-spinner></vk-spinner></div>
-        <vuetable
-          ref="myTable"
-          :api-mode="false"
-          :data="localData"
-          :fields="fields"
-          :css="css.table"
-          track-by="ID"
-          pagination-path=""
-          @vuetable:checkbox-toggled="check"
-          @vuetable:checkbox-toggled-all="check"
-        >
-          <div slot="shortcode" slot-scope="props">
-            <input type="text" name="" :value="'[formello id=' + props.rowData.ID + ']'" readonly>
-          </div>
-          <div slot="post_title" slot-scope="props">
-            <a :href="'#/edit/' + props.rowData.ID">{{props.rowData.post_title}}</a>
-            <div class="row-actions">Succhia</div>
-          </div>
-          <div slot="actions" slot-scope="props"> 
-            <vk-icon-button :href="'#/edit/' + props.rowData.ID" icon="cog" class="uk-button-primary"></vk-icon-button>
-            <vk-icon-button @click.prevent="deleteRow(props.rowData.ID)" icon="trash" class="uk-button-danger"></vk-icon-button>
-          </div>
-        </vuetable>
-      </vk-card>
-    </div>
+      <md-table-row slot="md-table-row" slot-scope="{ item }" md-selectable="multiple">
+        <md-table-cell md-label="Form" md-sort-by="post_title">
+          <a :href="'#/edit/' + item.ID">{{ item.post_title }}</a>
+          <span class="row-actions"><a :href="'#/submissions/' + item.ID">Submissions</a></span>
+        </md-table-cell>
+        <md-table-cell md-label="Slug">
+          <input type="text" readonly :value="'[formello id=' + item.ID + ']'" />
+        </md-table-cell>
+      </md-table-row>
+      <md-table-pagination />
+    </md-table>
 
-    <vk-modal :show.sync="show">
-      <vk-modal-close @click="show = false"></vk-modal-close>
-      <vk-modal-title slot="header">Modal Title</vk-modal-title>
-      <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p>
-      <div slot="footer" class="uk-text-right">
-        <vk-button class="uk-margin-small-right" @click="show = false">Cancel</vk-button>
-        <vk-button type="primary">Save</vk-button>
-      </div>
-    </vk-modal>
+    <md-dialog-confirm
+      :md-active.sync="active"
+      md-title="Are you sure you want proceed?"
+      md-confirm-text="Delete"
+      md-cancel-text="Cancel"
+      @md-confirm="deleteRow" />
 
-  </vk-grid>
 
+  </div>
 </template>
 
 <script>
-import Vuetable from 'vuetable-2'
-import VuetableFieldCheckbox from "vuetable-2/src/components/VuetableFieldCheckbox.vue";
-
-export default {
-
-  name: 'Home',
-
-  data () {
-    return {
-      show: false,
-      loading: false,
+  export default {
+    name: 'TableMultiple',
+    data: () => ({
+      active: false,
       localData: [],
-      fields: [
-        {
-          name: VuetableFieldCheckbox,
-          titleClass: "center aligned",
-          dataClass: "center aligned"
-        },
-        {
-          name: 'ID',
-          title: 'ID',
-          visible: false
-        },
-        {
-          name: 'post_title',
-          title: 'Form',
-          titleClass: 'uk-table-expand',
-          dataClass: 'center aligned',
-        },
-        {
-          name: 'shortcode',
-          title: 'Shortcode',
-          titleClass: 'uk-width-small',
-        },
-        {
-          name: 'actions',
-          title: '',
-          titleClass: 'uk-width-small',
+      selected: [],
+    }),
+    methods: {
+      deleteRow() {
+        let arrayLength = this.selected.length
+
+        for (var i = 0; i < arrayLength; i++) {
+          let id = this.selected[i].ID
+          axios.delete( 'form/' + id )
+            .then( response => {
+              this.localData = [
+                ...this.localData.filter((item) => item.ID !== id)
+              ]          
+            })  
+
         }
-      ],
-      css: {
-        table: {
-          tableWrapper: 'uk-overflow-auto',
-          tableHeaderClass: 'fixed',
-          tableBodyClass: '',
-          tableClass: 'uk-table uk-table-divider uk-table-hover uk-table-small',
-          loadingClass: 'loading',
-          ascendingIcon: 'blue chevron up icon',
-          descendingIcon: 'blue chevron down icon',
-          ascendingClass: 'sorted-asc',
-          descendingClass: 'sorted-desc',
-          sortableIcon: 'grey sort icon',
-          handleIcon: 'grey sidebar icon',
-        },
+
+      },
+      goToNew() {
+        this.$router.push('new')
+      },
+      onSelect (items) {
+        this.show = true
+        this.selected = items
+      },
+      getAlternateLabel (count) {
+        let plural = ''
+
+        if (count > 1) {
+          plural = 's'
+        }
+
+        return `${count} form${plural} selected`
       }
-    }
-  },
-  methods: {
-    showModal(){
-      this.show = true
     },
-    check(){
-      console.log(this.$refs.myTable.selectedTo)
-    },
-    goToNew() {
-      this.$router.push('new')
-    },
-    deleteRow(id) {
-      axios.delete( 'form' + '/' + id )
+    created() {
+      this.loading = true
+      axios.get( 'form' )
         .then( response => {
-          this.localData = [
-            ...this.localData.filter((item) => item.ID !== id)
-          ]          
+          this.localData = response.data
+          this.loading = false
         })
-    }
-  },
-  created() {
-    this.loading = true
-    axios.get( 'form' )
-      .then( response => {
-        this.localData = response.data
-        this.loading = false
-      })
 
-  },
-  components: {
-  	Vuetable,
-    VuetableFieldCheckbox
-  }  
-}
+    },
+  }
 </script>
-
-<!-- Add "scoped" attribute to limit CSS to this component only -->
-<style>
-</style>

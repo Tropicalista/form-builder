@@ -5,12 +5,15 @@
     "license": "GPL-2.0-or-later",
     "authors": [
         {
-            "name": "Tareq Hasan",
-            "email": "tareq@wedevs.com"
+            "name": "Francesco Pepe",
+            "email": "info@francescopepe.com"
         }
     ],
     "minimum-stability": "dev",
-    "require": {},
+    "require": {
+        "rakit/validation": "dev-master",
+        "drewm/mailchimp-api": "dev-master"
+    },
     "autoload": {
         "classmap": [
             "includes/"

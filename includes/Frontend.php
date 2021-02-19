@@ -1,13 +1,20 @@
 <?php
 namespace App;
 
+use Rakit\Validation\Validator;
+
 /**
  * Frontend Pages Handler
  */
 class Frontend {
 
+    private $validator = '';
+
     public function __construct() {
-        add_action( 'init', array( $this, 'listen_for_submit' ) );
+        $this->validator = new Validator;
+
+        add_action( 'wp_ajax_formello', array( $this, 'listen_for_submit' ) );
+        add_action( 'wp_ajax_nopriv_formello', array( $this, 'listen_for_submit' ) );
         add_shortcode( 'formello', [ $this, 'shortcode' ] );
         add_action( 'parse_request', array( $this, 'listen_for_preview' ) );
     }
@@ -29,21 +36,27 @@ class Frontend {
             return 'spam';
         }
 
-        $was_required    = (array) formello_array_get( $data, '_was_required', array() );
-        $required_fields = $form->get_required_fields();
-        foreach ( $required_fields as $field_name ) {
-            $value = formello_array_get( $data, $field_name );
-            if ( empty( $value ) && ! in_array( $field_name, $was_required ) ) {
-                return 'required_field_missing';
-            }
+        // validate recaptcha
+        if( isset( $data['g-recaptcha-response'] ) ){
+            $captcha_validate = $this->validateRecaptcha( $form, $data );
         }
 
-        $email_fields = $form->get_email_fields();
-        foreach ( $email_fields as $field_name ) {
-            $value = formello_array_get( $data, $field_name );
-            if ( ! empty( $value ) && ! is_email( $value ) ) {
-                return 'invalid_email';
-            }
+        if( isset( $captcha_validate ) && ( $captcha_validate === false ) ){
+            return 'invalid_captcha';
+        }
+
+        // perform validation
+        $validation = $this->validator->make($data, $form->validation['constraints']);
+
+        // then validate
+        $validation->validate();
+
+        if ($validation->fails()) {
+            // handling errors
+            $errors = $validation->errors();
+
+            return $errors->firstOfAll();
+
         }
 
         $error_code = '';
@@ -71,12 +84,29 @@ class Frontend {
          * @param array $data
          */
         $error_code = apply_filters( 'formello_validate_form', $error_code, $form, $data );
+
         if ( ! empty( $error_code ) ) {
             return $error_code;
         }
 
         // all good: no errors!
         return '';
+    }
+
+    private function validateRecaptcha( $form, $data ){
+
+        $captcha_postdata = http_build_query(array(
+                                    'secret' => $form->settings['settings']['recaptcha_secret_key'],
+                                    'response' => $data['g-recaptcha-response'],
+                                    'remoteip' => $_SERVER['REMOTE_ADDR']));
+        $captcha_opts = array('http' => array(
+                              'method'  => 'POST',
+                              'header'  => 'Content-type: application/x-www-form-urlencoded',
+                              'content' => $captcha_postdata));
+        $captcha_context  = stream_context_create($captcha_opts);
+        $captcha_response = json_decode(file_get_contents("https://www.google.com/recaptcha/api/siteverify" , false , $captcha_context), true);
+
+        return $captcha_response['success'];
     }
 
     /**
@@ -128,6 +158,7 @@ class Frontend {
     */
     public function get_request_data() {
         $data = $_POST;
+        unset($data['action']);
 
         if ( ! empty( $_FILES ) ) {
 
@@ -144,8 +175,7 @@ class Frontend {
     }
 
     public function listen_for_submit() {
-var_dump("formello respond");
-exit;
+
         // only respond to AJAX requests with _formello_form_id set.
         if ( empty( $_POST['_formello_form_id'] )
             || empty( $_SERVER['HTTP_X_REQUESTED_WITH'] )
@@ -153,10 +183,15 @@ exit;
             return;
         }
 
-        $data       = $this->get_request_data();
+        $data       = $this->get_request_data();       
         $form_id    = (int) $data['_formello_form_id'];
         $form       = formello_get_form( $form_id );
         $error_code = $this->validate_form( $form, $data );
+        // at this point we don't need anymore recaptcha
+        if( isset( $data['g-recaptcha-response'] ) ){
+            unset( $data['g-recaptcha-response'] );
+        }
+
         if ( empty( $error_code ) ) {
 
             /**
@@ -179,6 +214,12 @@ exit;
                 if ( class_exists('GoodByeCaptcha') && is_string( $key ) && is_string( $value ) && strtoupper( $key ) !== $key && substr_count( $key, '-' ) >= 2 && substr_count( trim( $value ), ' ' ) === 0 ) {
                     unset( $data[ $key ] );
                     continue;
+                }
+            }
+            // process uploads of files
+            foreach ($data as $key => $value) {
+                if( is_array( $value ) ){
+                    $this->processUploads( $value, $form_id );
                 }
             }
 
@@ -210,8 +251,8 @@ exit;
             }
 
             // process form actions
-            if ( isset( $form->settings['actions'] ) ) {
-                foreach ( $form->settings['actions'] as $action_settings ) {
+            if ( isset( $form->settings['settings']['actions'] ) ) {
+                foreach ( $form->settings['settings']['actions'] as $action_settings ) {
                     /**
                      * Processes the specified form action and passes related data.
                      *
@@ -219,7 +260,7 @@ exit;
                      * @param Submission $submission
                      * @param Form $form
                      */
-                    do_action( 'formello_process_form_action_' . $action_settings['type'], $action_settings, $submission, $form );
+                    do_action( 'formello_process_form_action_' . $action_settings['type'], $action_settings['settings'], $submission, $form );
                 }
             }
 
@@ -249,25 +290,18 @@ exit;
             do_action( 'formello_form_error', $error_code, $form, $data );
         }
 
-        // Delay response until "wp_loaded" hook to give other plugins a chance to process stuff.
-        add_action(
-            'wp_loaded',
-            function() use ( $error_code, $form, $data ) {
-                $response = $this->get_response_for_error_code( $error_code, $form, $data );
+        $response = $this->get_response_for_error_code( $error_code, $form, $data );
+        if ( ob_get_level() > 0 ) {
+            ob_end_clean();
+        }
 
-                // clear output, some plugin or hooked code might have thrown errors by now.
-                if ( ob_get_level() > 0 ) {
-                    ob_end_clean();
-                }
+        send_origin_headers();
+        send_nosniff_header();
+        nocache_headers();
 
-                send_origin_headers();
-                send_nosniff_header();
-                nocache_headers();
+        wp_send_json( $response, 200 );
+        wp_die();
 
-                wp_send_json( $response, 200 );
-                wp_die();
-            }
-        );
     }
 
     public function listen_for_preview() {
@@ -293,13 +327,15 @@ exit;
                 }
 
                 status_header( 200 );
-                require BASEPLUGIN_PATH . '/views/form-preview.php';
-                wp_die();
+                require FORMELLO_PATH . '/views/form-preview.php';
+                exit;
+                //wp_die(); 
             }
         );
     }
 
     private function get_response_for_error_code( $error_code, Form $form, $data = array() ) {
+
         // return success response for empty error code string or spam (to trick bots)
         if ( $error_code === '' || $error_code === 'spam' ) {
             $response = array(
@@ -307,11 +343,11 @@ exit;
                     'type' => 'success',
                     'text' => $form->get_message( 'success' ),
                 ),
-                'hide_form' => (bool) $form->settings['hide_after_success'],
+                'hide_form' => (bool) $form->settings['settings']['hide_form'],
             );
 
-            if ( ! empty( $form->settings['redirect_url'] ) ) {
-                $response['redirect_url'] = formello_replace_data_variables( $form->settings['redirect_url'], $data, 'urlencode' );
+            if ( ! empty( $form->settings['settings']['redirect_url'] ) ) {
+                $response['redirect_url'] = formello_replace_data_variables( $form->settings['settings']['redirect_url'], $data, 'urlencode' );
             }
 
             return apply_filters( 'formello_form_response', $response, $form, $data );
@@ -334,7 +370,6 @@ exit;
     }
 
     public function shortcode( $attributes = array(), $content = '' ) {
-        wp_enqueue_script( 'baseplugin-frontend' );
 
         if ( empty( $attributes['slug'] ) && empty( $attributes['id'] ) ) {
             return '';
@@ -342,16 +377,86 @@ exit;
 
         $slug_or_id = empty( $attributes['id'] ) ? $attributes['slug'] : $attributes['id'];
         try {
+
             $form = formello_get_form( $slug_or_id );
+
+            unset($form->settings['settings']['recaptcha_secret_key']);
+            unset($form->settings['settings']['actions']);
+
+            wp_localize_script(
+                'formello-frontend',
+                'formello_vars',
+                array(
+                    'ajax_url' => admin_url( 'admin-ajax.php' ),
+                    'formello_settings' => $form->settings['settings'],
+                )
+            );
+
+            if( $form->settings['settings']['recaptcha_enabled'] ){
+                wp_enqueue_script( 'recaptcha', 'https://www.google.com/recaptcha/api.js' );
+            };
+
+            if( $form->settings['settings']['load_stylesheet'] ){
+                wp_enqueue_style( 'formello-style' );
+            };
+
+            if( $form->settings['settings']['has_date'] ){
+                wp_enqueue_style( 'flatpickr' ,'https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css' );
+                wp_enqueue_script( 'flatpickr' );
+            };
+
+            //wp_enqueue_script( 'formello-frontend' );
+
         } catch ( \Exception $e ) {
             if ( ! current_user_can( 'manage_options' ) ) {
                 return $content;
             }
 
-            return sprintf( '<p><strong>%s</strong> %s</p>', __( 'Error:', 'formello' ), sprintf( __( 'No form found with slug %s', 'formello' ), $attributes['slug'] ) );
+            return sprintf( '<p><strong>%s</strong> %s</p>', __( 'Error:', 'formello' ), sprintf( __( 'No form found with id %s', 'formello' ), $attributes['id'] ) );
         }
 
         return $form . $content;
+    }
+
+    private function processUploads( $file, $form_id ){
+
+        // Define data.
+        $file_name            = sanitize_file_name( $file['name'] );
+        $file_ext             = pathinfo( $file_name, PATHINFO_EXTENSION );
+        $file_base            = wp_basename( $file_name, ".$file_ext" );
+        $file_name_new        = sprintf( '%s-%s.%s', $file_base, wp_hash( $file_name . uniqid() . $form_id ), strtolower( $file_ext ) );
+        $uploads              = wp_upload_dir();
+        $formello_uploads_root = trailingslashit( $uploads['basedir'] ) . 'formello';
+
+        // Add filter to allow redefine store directory.
+        $custom_uploads_root = apply_filters( 'formello_upload_root', $formello_uploads_root );
+        if ( wp_is_writable( $custom_uploads_root ) ) {
+            $formello_uploads_root = $custom_uploads_root;
+        }
+
+        $form_directory         = absint( $form_id ) . '-' . md5( $form_id );
+        $formello_uploads_form  = trailingslashit( $formello_uploads_root ) . $form_directory;
+        $file_new               = trailingslashit( $formello_uploads_form ) . $file_name_new;
+        $file_url               = trailingslashit( $uploads['baseurl'] ) . 'formello/' . trailingslashit( $form_directory ) . $file_name_new;
+
+        // Check for form upload directory destination.
+        if ( ! file_exists( $formello_uploads_form ) ) {
+            wp_mkdir_p( $formello_uploads_form );
+        }
+
+        // Check if the index.html exists in the root uploads director, if not create it.
+        if ( ! file_exists( trailingslashit( $formello_uploads_root ) . 'index.html' ) ) {
+            file_put_contents( trailingslashit( $formello_uploads_root ) . 'index.html', '' );
+        }
+
+        // Move the file to the uploads dir - similar to _wp_handle_upload().
+        $move_new_file = @move_uploaded_file( $file['tmp_name'], $file_new );
+
+        // Set correct file permissions.
+        $stat  = stat( dirname( $file_new ) );
+        $perms = $stat['mode'] & 0000666;
+        @ chmod( $file_new, $perms );
+
     }
 
 }
